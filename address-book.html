@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Address Book</title>
+<link rel="stylesheet" href="address-book.css">
+<style>
+    #loadingOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;color:#fff;font-family:sans-serif;flex-direction:column;gap:12px;}
+    #loadingOverlay.show{display:flex;}
+    .spinner{width:32px;height:32px;border:4px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div id="loadingOverlay"><div class="spinner"></div><span>Loading...</span></div>
+<button class="back-btn" onclick="goBack()">&#8592; Back</button>
+<h2 style="color: #ffffff;">My Address</h2>
+<div id="addressList"></div>
+<button class="add-btn" onclick="window.location.href='add-new-address.html'" style="
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 26px 13px 18px;
+    background: #fff;
+    color: #4a2080;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    border: 2px dashed #a07cd0;
+    border-radius: 14px;
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgba(74,32,128,.10);
+    transition: all .2s ease;
+" 
+onmouseover="
+    this.style.background='linear-gradient(135deg,#4a2080,#8b5fcf)';
+    this.style.color='#fff';
+    this.style.border='2px dashed transparent';
+    this.style.boxShadow='0 6px 22px rgba(74,32,128,.32)';
+    this.style.transform='translateY(-2px) scale(1.02)';
+    this.querySelector('.add-icon').style.background='rgba(255,255,255,.18)';
+    this.querySelector('.add-plus').style.transform='rotate(90deg)';
+"
+onmouseout="
+    this.style.background='#fff';
+    this.style.color='#4a2080';
+    this.style.border='2px dashed #a07cd0';
+    this.style.boxShadow='0 2px 12px rgba(74,32,128,.10)';
+    this.style.transform='none';
+    this.querySelector('.add-icon').style.background='rgba(74,32,128,.08)';
+    this.querySelector('.add-plus').style.transform='rotate(0deg)';
+"
+onmousedown="this.style.transform='scale(.97)'"
+onmouseup="this.style.transform='translateY(-2px) scale(1.02)'">
+
+    <span class="add-icon" style="
+        display:flex; align-items:center; justify-content:center;
+        width:30px; height:30px;
+        background:rgba(74,32,128,.08);
+        border-radius:8px; flex-shrink:0;
+        transition:background .2s;
+    ">
+        <span class="add-plus" style="
+            font-size:20px; font-weight:300; line-height:1;
+            transition:transform .25s ease; margin-top:-1px;
+        ">+</span>
+    </span>
+
+    <span>Add New Address</span>
+
+    <svg style="opacity:.5;flex-shrink:0" width="14" height="14" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/>
+        <circle cx="12" cy="10" r="3"/>
+    </svg>
+</button>
+
+<script type="module">
+import { getAddresses, deleteAddress, setDefaultAddress } from "./db.js";
+
+const currentCustomer = localStorage.getItem("currentCustomer");
+const currentUID      = localStorage.getItem("currentCustomerUID");
+if (!currentCustomer || !currentUID) { alert("Please login first."); window.location.href = "login.html"; throw new Error(); }
+
+const overlay = document.getElementById("loadingOverlay");
+overlay.classList.add("show");
+
+let addresses = [];
+
+async function loadAddresses() {
+    try {
+        addresses = await getAddresses(currentUID);
+        // Addresses loaded from Firestore
+    } catch(e) {
+        addresses = [];
+    }
+    renderAddresses();
+    overlay.classList.remove("show");
+}
+
+function renderAddresses() {
+    const list = document.getElementById("addressList");
+    if (addresses.length === 0) {
+        list.innerHTML = "<p style='text-align:center;color:#888;margin:30px 0;'>No address saved yet.</p>";
+        return;
+    }
+    list.innerHTML = "";
+    addresses.forEach((addr, i) => {
+        const div = document.createElement("div");
+        div.className = "address-card" + (addr.isDefault ? " default-card" : "");
+        div.innerHTML = `
+            ${addr.isDefault ? '<span class="default-tag">Default</span>' : ''}
+            <p class="addr-name"><strong>${addr.fullName}</strong> &nbsp; ${addr.phone}</p>
+            <p class="addr-street">${addr.street}</p>
+            <p class="addr-city">${addr.city}${addr.zip ? ', '+addr.zip : ''}</p>
+            <span class="addr-label-tag">${addr.label || 'HOME'}</span>
+            <div class="addr-actions">
+                ${!addr.isDefault ? `<button onclick="setDefault('${addr.id}')">Set as Default</button>` : ''}
+                <button onclick="editAddr('${addr.id}')">Edit</button>
+                <button class="del-btn" onclick="removeAddr('${addr.id}')">Delete</button>
+            </div>
+        `;
+        list.appendChild(div);
+    });
+}
+
+window.setDefault = async function(id) {
+    overlay.classList.add("show");
+    try {
+        await setDefaultAddress(currentUID, id);
+        await loadAddresses();
+    } catch(e) { alert("Error: " + e.message); overlay.classList.remove("show"); }
+};
+
+window.editAddr = function(id) {
+    localStorage.setItem("editAddressId", id);
+    window.location.href = "add-new-address.html";
+};
+
+window.removeAddr = async function(id) {
+    if (!confirm("Delete this address?")) return;
+    overlay.classList.add("show");
+    try {
+        await deleteAddress(id);
+        await loadAddresses();
+    } catch(e) { alert("Error: " + e.message); overlay.classList.remove("show"); }
+};
+
+window.goBack = function() { window.location.href = "customer-profile.html"; };
+
+loadAddresses();
+</script>
+</body>
+</html>

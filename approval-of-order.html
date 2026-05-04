@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Approval</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f4f6f9;
+            color: #2d2d2d;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .status-btn.s-cancelled { background: #fde8e8; color: #8b0000; border-color: #f5a0a0; }
+        .status-btn.s-rejected  { background: #f5e0ff; color: #5c007a; border-color: #d9a0f5; }
+
+        .cancelled-notice {
+            margin: 0 16px 12px;
+            padding: 10px 14px;
+            background: #fff0f0;
+            border: 1px solid #f5a0a0;
+            border-radius: 10px;
+            font-size: 12px;
+            color: #8b0000;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            animation: cancelPulse 1.5s ease-in-out 3;
+        }
+        .cancelled-notice .cn-icon { font-size: 16px; flex-shrink: 0; }
+        .cancelled-notice strong { display: block; font-size: 13px; margin-bottom: 2px; }
+
+        @keyframes cancelPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220,53,69,0.3); }
+            50%       { box-shadow: 0 0 0 6px rgba(220,53,69,0); }
+        }
+
+        .order-card.is-cancelled { border-left: 4px solid #e74c3c; }
+        .order-card.is-rejected  { border-left: 4px solid #9b30d0; }
+        .order-card.is-delivered { border-left: 4px solid #28a745; }
+        .order-card.is-reserved  { border-left: 4px solid #f39c12; }
+
+        .tab-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 18px; height: 18px;
+            background: #e74c3c; color: #fff;
+            border-radius: 50%; font-size: 10px; font-weight: 800;
+            margin-left: 5px; padding: 0 4px;
+            animation: blink 1s ease-in-out infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.4; }
+        }
+
+        .back-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            margin: 16px 20px 0;
+            background: none; border: none;
+            color: #5a7fc1; font-size: 14px; font-weight: 600;
+            cursor: pointer; padding: 6px 10px; border-radius: 8px;
+            transition: background .15s;
+        }
+        .back-btn:hover { background: #e8eef8; }
+
+        .page-header { padding: 10px 24px 0; }
+        .page-title { font-size: 22px; font-weight: 700; color: #1a1a2e; }
+        .page-sub { font-size: 13px; color: #777; margin-top: 2px; }
+
+        .controls { padding: 14px 20px 0; }
+        .search-wrap {
+            display: flex; align-items: center; gap: 8px;
+            background: #fff; border: 1px solid #dde3ef;
+            border-radius: 10px; padding: 9px 14px;
+            margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+        }
+        .search-wrap svg { color: #aaa; flex-shrink: 0; }
+        .search-wrap input {
+            border: none; outline: none; flex: 1;
+            font-size: 14px; background: transparent; color: #333;
+        }
+
+        .filter-tabs {
+            display: flex; gap: 7px; flex-wrap: wrap;
+            padding-bottom: 4px;
+        }
+        .tab {
+            padding: 6px 14px; border-radius: 20px;
+            border: 1.5px solid #d0d7e8; background: #fff;
+            font-size: 12px; font-weight: 600; color: #5a6a8a;
+            cursor: pointer; transition: all .15s; white-space: nowrap;
+        }
+        .tab.active, .tab:hover {
+            background: #1a1a2e; color: #fff; border-color: #1a1a2e;
+        }
+
+        .order-list { padding: 14px 20px; display: flex; flex-direction: column; gap: 14px; }
+        .empty { color: #aaa; text-align: center; padding: 40px 0; font-size: 15px; }
+        .loading { color: #888; text-align: center; padding: 40px 0; font-size: 14px; }
+
+        .order-card {
+            background: #fff; border-radius: 14px;
+            border: 1px solid #e4e9f4;
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+            overflow: hidden;
+            animation: fadeUp .25s ease both;
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .order-card-top {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 16px 8px; border-bottom: 1px solid #f0f2f8;
+        }
+        .order-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+        .order-type-badge, .status-badge {
+            font-size: 11px; font-weight: 700;
+            padding: 3px 10px; border-radius: 20px;
+            letter-spacing: .3px;
+        }
+        .order-badge   { background: #e8f0fe; color: #3a5fcf; }
+        .reserve-badge { background: #fff3e0; color: #b05e00; }
+
+        .order-date { font-size: 11px; color: #aaa; white-space: nowrap; }
+
+        .order-body {
+            display: flex; gap: 12px; padding: 12px 16px 10px;
+        }
+        .order-img {
+            width: 70px; height: 70px; object-fit: cover;
+            border-radius: 10px; border: 1px solid #eee; flex-shrink: 0;
+            background: #f4f4f4;
+        }
+        .order-info { flex: 1; min-width: 0; }
+        .order-name { font-size: 15px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+        .order-detail { font-size: 12px; color: #666; margin-top: 2px; }
+        .order-price { color: #2a7d4f; }
+        .order-customer {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 12px; color: #888; margin-top: 4px;
+        }
+
+        .gcash-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 16px; background: #f0f9ff;
+            font-size: 12px; color: #4a8caa; border-top: 1px solid #e0f0fa;
+        }
+        .gcash-row.no-gcash { background: #fafafa; color: #bbb; border-top: 1px solid #f0f0f0; }
+        .view-gcash-btn {
+            margin-left: auto; font-size: 11px; font-weight: 700;
+            padding: 4px 12px; border-radius: 6px;
+            background: #5bc8f5; color: #fff; border: none; cursor: pointer;
+            transition: background .15s;
+        }
+        .view-gcash-btn:hover { background: #38aad4; }
+
+        /* ── STATUS CHANGER ───────────────────────────────────────────── */
+        .status-changer {
+            padding: 10px 16px 12px;
+            border-top: 1px solid #f0f2f8;
+            background: #fafbff;
+        }
+        .status-changer-label {
+            font-size: 11px; font-weight: 700; color: #8a96b0;
+            text-transform: uppercase; letter-spacing: .5px;
+            margin-bottom: 8px;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 6px;
+        }
+        .status-btn {
+            padding: 8px 10px; border-radius: 9px;
+            border: 1.5px solid transparent;
+            font-size: 12px; font-weight: 600;
+            cursor: pointer; text-align: center;
+            transition: all .15s;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .status-btn:not([disabled]):hover { filter: brightness(.93); }
+        .status-btn.current { box-shadow: 0 0 0 2px #1a1a2e; }
+        .status-btn[disabled] { cursor: not-allowed; }
+
+        .status-btn.s-pending    { background: #fff3cd; color: #856404; border-color: #f5d478; }
+        .status-btn.s-to-ship    { background: #d1ecf1; color: #0c5460; border-color: #9eddea; }
+        .status-btn.s-to-receive { background: #cce5ff; color: #004085; border-color: #9ecfff; }
+        .status-btn.s-reserved   { background: #fde8d8; color: #7d3c00; border-color: #f5c6a0; }
+        .status-btn.s-delivered  { background: #d0f0e8; color: #0a5940; border-color: #7dd8bc; }
+
+        /* Locked state */
+        .status-btn.is-locked {
+            opacity: 0.35;
+            cursor: not-allowed;
+            filter: grayscale(40%);
+        }
+
+        /* ── LOCKED NOTICE BANNER ────────────────────────────────────── */
+        .locked-notice {
+            display: flex; align-items: center; gap: 8px;
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11px; font-weight: 600;
+        }
+        .locked-notice.delivered-lock {
+            background: #edfaf3; color: #0a5940;
+            border: 1px solid #7dd8bc;
+        }
+        .locked-notice.reserved-lock {
+            background: #fff3e0; color: #7d3c00;
+            border: 1px solid #f5c6a0;
+        }
+        .locked-notice.rejected-lock {
+            background: #f8eeff; color: #5c007a;
+            border: 1px solid #d9a0f5;
+        }
+
+        /* ── REJECT BUTTON ROW ───────────────────────────────────────── */
+        .reject-row {
+            padding: 10px 16px 14px;
+            border-top: 1px solid #f0f2f8;
+            background: #fefaff;
+            display: flex; align-items: center; justify-content: flex-end;
+        }
+        .btn-reject {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 9px 20px; border-radius: 9px;
+            background: #f8eeff; color: #7b00a8;
+            border: 1.5px solid #d9a0f5;
+            font-size: 13px; font-weight: 700;
+            cursor: pointer; transition: background .15s, transform .1s, box-shadow .15s;
+        }
+        .btn-reject:hover  { background: #f0d6ff; box-shadow: 0 2px 8px rgba(155,48,208,.18); }
+        .btn-reject:active { transform: scale(.97); }
+
+        /* ── REJECTED NOTICE (on card) ───────────────────────────────── */
+        .rejected-notice {
+            margin: 0 16px 12px;
+            padding: 10px 14px;
+            background: #f8eeff;
+            border: 1px solid #d9a0f5;
+            border-radius: 10px;
+            font-size: 12px;
+            color: #5c007a;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .rejected-notice .rn-icon { font-size: 16px; flex-shrink: 0; }
+        .rejected-notice strong { display: block; font-size: 13px; margin-bottom: 2px; }
+
+        /* ── DELETE BUTTON ───────────────────────────────────────────── */
+        .delete-row {
+            padding: 10px 16px 14px;
+            border-top: 1px solid #f0f2f8;
+            background: #fffafa;
+            display: flex; align-items: center; justify-content: flex-end;
+        }
+        .btn-delete {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 18px; border-radius: 8px;
+            background: #fff0f0; color: #c0392b;
+            border: 1.5px solid #f5c6c6;
+            font-size: 12px; font-weight: 700;
+            cursor: pointer; transition: background .15s, transform .1s;
+        }
+        .btn-delete:hover  { background: #fddede; }
+        .btn-delete:active { transform: scale(.97); }
+
+        /* ── MODAL ───────────────────────────────────────────────────── */
+        .img-modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.65); z-index: 999;
+            align-items: center; justify-content: center;
+        }
+        .img-modal-overlay.open { display: flex; }
+        .img-modal-box {
+            background: #fff; border-radius: 16px; padding: 20px;
+            max-width: 90vw; max-height: 90vh;
+            display: flex; flex-direction: column; align-items: center; gap: 12px;
+            position: relative;
+        }
+        .img-modal-close {
+            position: absolute; top: 12px; right: 14px;
+            background: none; border: none; font-size: 18px;
+            cursor: pointer; color: #888;
+        }
+        .img-modal-label { font-size: 14px; font-weight: 700; color: #333; }
+        .img-modal-box img { max-width: 70vw; max-height: 65vh; border-radius: 10px; object-fit: contain; }
+
+        /* Delete / Reject confirm modal */
+        .del-modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.5); z-index: 998;
+            align-items: flex-end; justify-content: center;
+        }
+        .del-modal-overlay.open { display: flex; }
+        .del-modal-box {
+            background: #fff; border-radius: 20px 20px 0 0;
+            padding: 24px 24px 36px; width: 100%; max-width: 480px;
+            animation: slideUp .25s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to   { transform: translateY(0); }
+        }
+        .del-modal-handle {
+            width: 40px; height: 4px; border-radius: 3px;
+            background: #e0e0e0; margin: 0 auto 18px;
+        }
+        .del-modal-title { font-size: 17px; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; }
+        .del-modal-sub   { font-size: 13px; color: #777; margin-bottom: 20px; line-height: 1.5; }
+        .del-modal-btns  { display: flex; gap: 10px; }
+        .del-modal-cancel {
+            flex: 1; padding: 12px; border-radius: 12px;
+            border: 1.5px solid #dde3ef; background: #f4f6f9;
+            font-size: 14px; font-weight: 700; color: #5a6a8a; cursor: pointer;
+        }
+        .del-modal-confirm {
+            flex: 2; padding: 12px; border-radius: 12px; border: none;
+            font-size: 14px; font-weight: 700;
+            cursor: pointer; transition: opacity .15s;
+        }
+        .del-modal-confirm.is-delete {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+            color: #fff;
+        }
+        .del-modal-confirm.is-reject {
+            background: linear-gradient(135deg, #7b00a8, #9b30d0);
+            color: #fff;
+        }
+        .del-modal-confirm:hover { opacity: .88; }
+        .del-modal-confirm:disabled { opacity: .5; cursor: not-allowed; }
+
+        .toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(60px);
+            background: #1a1a2e; color: #fff; padding: 11px 24px;
+            border-radius: 30px; font-size: 13px; font-weight: 600;
+            box-shadow: 0 4px 16px rgba(0,0,0,.2);
+            transition: transform .3s ease, opacity .3s ease; opacity: 0; z-index: 1000;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <button class="back-btn" onclick="goBack()">&#8592; Back</button>
+
+    <div class="page-header">
+        <h1 class="page-title">Order Approval</h1>
+        <p class="page-sub" id="sellerStore">—</p>
+    </div>
+
+    <div class="controls">
+        <div class="search-wrap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" id="searchInput" placeholder="Search by item or customer..." oninput="renderOrders()">
+        </div>
+        <div class="filter-tabs" id="filterTabs">
+            <button class="tab active" onclick="setFilter('all', this)">All</button>
+            <button class="tab" onclick="setFilter('pending', this)">Pending</button>
+            <button class="tab" onclick="setFilter('to-ship', this)">To Ship</button>
+            <button class="tab" onclick="setFilter('to-receive', this)">To Receive</button>
+            <button class="tab" onclick="setFilter('reserved', this)">Reserved</button>
+            <button class="tab" onclick="setFilter('delivered', this)">Delivered</button>
+            <button class="tab" onclick="setFilter('cancelled', this)">Cancelled</button>
+            <button class="tab" onclick="setFilter('rejected', this)">Rejected</button>
+        </div>
+    </div>
+
+    <div class="order-list" id="orderList">
+        <p class="loading">Loading orders...</p>
+    </div>
+
+    <!-- GCash Screenshot Modal -->
+    <div class="img-modal-overlay" id="imgModalOverlay" onclick="closeImgModal()">
+        <div class="img-modal-box" onclick="event.stopPropagation()">
+            <button class="img-modal-close" onclick="closeImgModal()">&#10005;</button>
+            <p class="img-modal-label">GCash Payment Screenshot</p>
+            <img id="imgModalSrc" src="" alt="GCash Screenshot">
+        </div>
+    </div>
+
+    <!-- Shared Action Modal (Delete & Reject) -->
+    <div class="del-modal-overlay" id="delModalOverlay">
+        <div class="del-modal-box">
+            <div class="del-modal-handle"></div>
+            <div class="del-modal-title" id="delModalTitle">🗑️ Delete Order?</div>
+            <div class="del-modal-sub" id="delModalSub">
+                This will permanently remove this order from your records.
+                This action <strong>cannot be undone</strong>.
+            </div>
+            <div class="del-modal-btns">
+                <button class="del-modal-cancel" onclick="closeDelModal()">Cancel</button>
+                <button class="del-modal-confirm is-delete" id="delConfirmBtn">🗑️ Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+<script type="module">
+import { getOrdersBySeller, updateOrderStatus, getAllStores, db } from "./db.js";
+import {
+    doc, deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const currentSeller = localStorage.getItem("currentSeller");
+if (!currentSeller) {
+    alert("Please login as seller first.");
+    window.location.href = "seller login.html";
+    throw new Error("stop");
+}
+
+// Load store name
+try {
+    const stores = await getAllStores();
+    const myStore = stores.find(s => s.seller === currentSeller);
+    document.getElementById("sellerStore").innerText = myStore ? myStore.name : currentSeller;
+} catch(e) {
+    document.getElementById("sellerStore").innerText = currentSeller;
+}
+
+let currentFilter    = "all";
+let allOrdersCache   = [];
+let prevCancelledIds = new Set();
+let pendingDeleteId  = null;
+let pendingRejectId  = null;
+
+const screenshotStore = {};
+
+// ── Status definitions ─────────────────────────────────────────────────────
+const ALL_STATUSES = [
+    { key: "pending",    label: "Pending",    icon: "🕐", cls: "s-pending"    },
+    { key: "to-ship",    label: "To Ship",    icon: "📦", cls: "s-to-ship"    },
+    { key: "to-receive", label: "To Receive", icon: "🚚", cls: "s-to-receive" },
+    { key: "delivered",  label: "Delivered",  icon: "✅", cls: "s-delivered",  sellerLock: true },
+    { key: "reserved",   label: "Reserved",   icon: "📅", cls: "s-reserved",   sellerLock: true },
+];
+
+const TERMINAL_STATUSES = new Set(["delivered", "reserved", "rejected", "cancelled"]);
+
+// ── Load ───────────────────────────────────────────────────────────────────
+async function loadOrders() {
+    try {
+        const fresh = await getOrdersBySeller(currentSeller);
+
+        const newCancelledIds = new Set(
+            fresh.filter(o => o.status === "cancelled").map(o => o.id)
+        );
+        const brandNew = [...newCancelledIds].filter(id => !prevCancelledIds.has(id));
+
+        if (brandNew.length > 0 && prevCancelledIds.size > 0) {
+            brandNew.forEach(id => {
+                const order = fresh.find(o => o.id === id);
+                const name  = order?.name || "an item";
+                const cust  = order?.customerUsername || order?.customer || "A customer";
+                showCancelNotification(`${cust} cancelled their order for "${name}".`);
+            });
+        }
+
+        prevCancelledIds = newCancelledIds;
+        allOrdersCache   = fresh;
+
+        fresh.forEach(order => {
+            if (order.gcashScreenshot) screenshotStore[order.id] = order.gcashScreenshot;
+        });
+
+    } catch(e) {
+        console.error("Failed to load orders:", e);
+        allOrdersCache = [];
+    }
+    renderOrders();
+    updateCancelledTabBadge();
+}
+
+// ── Cancelled badge ────────────────────────────────────────────────────────
+function updateCancelledTabBadge() {
+    const count = allOrdersCache.filter(o => o.status === "cancelled").length;
+    document.querySelectorAll(".tab").forEach(tab => {
+        const oldBadge = tab.querySelector(".tab-badge");
+        if (oldBadge) oldBadge.remove();
+        const labelText = tab.childNodes[0]?.textContent?.trim() || tab.textContent.trim();
+        if (labelText === "Cancelled" && count > 0) {
+            const badge = document.createElement("span");
+            badge.className  = "tab-badge";
+            badge.textContent = count;
+            tab.appendChild(badge);
+        }
+    });
+}
+
+// ── Cancel popup ───────────────────────────────────────────────────────────
+function showCancelNotification(msg) {
+    const existing = document.getElementById("cancelNotif");
+    if (existing) existing.remove();
+    const notif = document.createElement("div");
+    notif.id = "cancelNotif";
+    notif.style.cssText = `
+        position:fixed;top:20px;left:50%;transform:translateX(-50%);
+        background:#e74c3c;color:#fff;padding:14px 22px;border-radius:14px;
+        font-size:13px;font-weight:600;box-shadow:0 6px 24px rgba(231,76,60,.35);
+        z-index:1001;max-width:90vw;text-align:center;
+        animation:slideDown .35s ease;display:flex;align-items:center;gap:10px;
+    `;
+    notif.innerHTML = `
+        <style>@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}</style>
+        <span style="font-size:18px;">🚫</span><span>${msg}</span>
+    `;
+    document.body.appendChild(notif);
+    setTimeout(() => notif.remove(), 5000);
+}
+
+// ── Filter ─────────────────────────────────────────────────────────────────
+window.setFilter = function(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    btn.classList.add("active");
+    renderOrders();
+};
+
+// ── Render ─────────────────────────────────────────────────────────────────
+window.renderOrders = function() {
+    const query = document.getElementById("searchInput").value.trim().toLowerCase();
+    let orders  = [...allOrdersCache];
+
+    if (currentFilter !== "all") {
+        orders = orders.filter(o => o.status === currentFilter);
+    }
+    if (query) {
+        orders = orders.filter(o =>
+            (o.name || "").toLowerCase().includes(query) ||
+            (o.customerUsername || o.customer || "").toLowerCase().includes(query)
+        );
+    }
+
+    const list = document.getElementById("orderList");
+    list.innerHTML = "";
+
+    if (orders.length === 0) {
+        list.innerHTML = "<p class='empty'>No orders found.</p>";
+        return;
+    }
+
+    orders.forEach(order => {
+        const card = document.createElement("div");
+        card.classList.add("order-card");
+
+        const status        = order.status || "pending";
+        const isCancelled   = status === "cancelled";
+        const isRejected    = status === "rejected";
+        const isDelivered   = status === "delivered";
+        const isReserved    = status === "reserved";
+        const isTerminal    = TERMINAL_STATUSES.has(status);
+        const canReject     = !isTerminal;
+
+        if (isCancelled) card.classList.add("is-cancelled");
+        if (isRejected)  card.classList.add("is-rejected");
+        if (isDelivered)  card.classList.add("is-delivered");
+        if (isReserved)   card.classList.add("is-reserved");
+
+        const statusInfo    = getStatusInfo(status);
+        const isReservation = order.type === "reservation";
+        const rawDate       = order.createdAt?.seconds
+            ? new Date(order.createdAt.seconds * 1000)
+            : order.createdAt ? new Date(order.createdAt) : null;
+        const displayDate   = rawDate
+            ? rawDate.toLocaleDateString("en-PH", { year:"numeric", month:"short", day:"numeric" })
+            : "—";
+        const hasScreenshot = !!screenshotStore[order.id];
+        const payMethod     = order.paymentMethod || "gcash";
+
+        // ── Status buttons ────────────────────────────────────────────
+        let lockedNotice = '';
+        if (isDelivered) {
+            lockedNotice = `<div class="locked-notice delivered-lock">🔒 Order delivered — status is final. Delete when done.</div>`;
+        } else if (isReserved) {
+            lockedNotice = `<div class="locked-notice reserved-lock">🔒 Reserved by customer — status is locked.</div>`;
+        } else if (isRejected) {
+            lockedNotice = `<div class="locked-notice rejected-lock">🚫 Order rejected by you — status is final. Delete when done.</div>`;
+        } else if (isCancelled) {
+            lockedNotice = `<div class="locked-notice" style="background:#fff0f0;color:#8b0000;border:1px solid #f5a0a0;">🚫 Order cancelled by customer — status is locked.</div>`;
+        }
+
+        const statusButtons = ALL_STATUSES.map(s => {
+            const isCurrent      = status === s.key;
+            const isButtonLocked = isTerminal ? !isCurrent : !!s.sellerLock;
+            const isDisabled     = isCurrent || isButtonLocked;
+            const title = isButtonLocked && !isCurrent
+                ? (isTerminal
+                    ? `Order is ${status} — status is locked`
+                    : (s.key === "delivered"
+                        ? "Set by customer when they confirm receipt"
+                        : "Auto-set when customer places a reservation"))
+                : `Set to ${s.label}`;
+
+            return `<button
+                class="status-btn ${s.cls}${isCurrent ? ' current' : ''}${isButtonLocked && !isCurrent ? ' is-locked' : ''}"
+                onclick="${(!isButtonLocked && !isCurrent) ? `changeStatus('${order.id}', '${s.key}')` : ''}"
+                title="${title}"
+                ${isDisabled ? 'disabled' : ''}
+            >${s.icon} ${s.label}${isButtonLocked && !isCurrent ? ' 🔒' : ''}</button>`;
+        }).join("");
+
+        // ── Reject button row (only when actionable) ──────────────────
+        const rejectRow = canReject ? `
+            <div class="reject-row">
+                <button class="btn-reject" onclick="openRejectModal('${order.id}')">
+                    🚫 Reject Order
+                </button>
+            </div>` : '';
+
+        // ── Delete row — show for BOTH delivered AND rejected ─────────
+        const deleteRow = (isDelivered || isRejected) ? `
+            <div class="delete-row">
+                <button class="btn-delete" onclick="openDelModal('${order.id}')">
+                    🗑️ Delete Order
+                </button>
+            </div>` : '';
+
+        // ── Rejected notice banner ────────────────────────────────────
+        const rejectedBanner = isRejected ? `
+            <div class="rejected-notice">
+                <div class="rn-icon">🚫</div>
+                <div>
+                    <strong>Order Rejected by You</strong>
+                    You have rejected this order. The customer has been notified.
+                </div>
+            </div>` : '';
+
+        card.innerHTML = `
+            <div class="order-card-top">
+                <div class="order-meta">
+                    <span class="order-type-badge ${isReservation ? 'reserve-badge' : 'order-badge'}">
+                        ${isReservation ? '📅 Reservation' : '🛒 Order'}
+                    </span>
+                    <span class="status-badge" style="background:${statusInfo.bg}; color:${statusInfo.color};">
+                        ${statusInfo.label}
+                    </span>
+                </div>
+                <span class="order-date">${displayDate}</span>
+            </div>
+
+            <div class="order-body">
+                <img class="order-img" src="${order.image || ''}" alt="${order.name || 'Item'}">
+                <div class="order-info">
+                    <h3 class="order-name">${order.name || '—'}</h3>
+                    <p class="order-detail">Size: <strong>${order.size || '—'}</strong> &nbsp;|&nbsp; Qty: <strong>${order.qty || 1}</strong></p>
+                    <p class="order-detail">Price: <strong class="order-price">₱${(parseFloat(order.price || 0) * (order.qty || 1)).toFixed(0)}</strong></p>
+                    <p class="order-detail">Payment: <strong>${payMethod === "cod" ? "💵 Cash on Delivery" : "📱 GCash"}</strong></p>
+                    <p class="order-customer">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        ${order.customerUsername || order.customer || '—'}
+                    </p>
+                    ${order.address ? `<p class="order-detail">📍 ${order.address.street || ''}, ${order.address.city || ''}</p>` : ''}
+                    ${order.referenceNum ? `<p class="order-detail">Ref #: <strong>${order.referenceNum}</strong></p>` : ''}
+                    ${isReservation && order.date ? `<p class="order-detail">📅 Reserve Date: <strong>${order.date}</strong></p>` : ''}
+                </div>
+            </div>
+
+            ${isCancelled ? `
+                <div class="cancelled-notice">
+                    <div class="cn-icon">🚫</div>
+                    <div>
+                        <strong>Order Cancelled by Customer</strong>
+                        This order was cancelled by the customer. No action needed.
+                    </div>
+                </div>` : ''}
+
+            ${rejectedBanner}
+
+            ${payMethod !== "cod" ? (hasScreenshot
+                ? `<div class="gcash-row">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5bc8f5" stroke-width="2">
+                            <rect x="5" y="2" width="14" height="20" rx="2"/>
+                        </svg>
+                        <span>GCash Payment Screenshot</span>
+                        <button class="view-gcash-btn" onclick="viewGcash('${order.id}')">View</button>
+                   </div>`
+                : `<div class="gcash-row no-gcash">No payment screenshot uploaded</div>`)
+            : `<div class="gcash-row no-gcash">💵 Cash on Delivery — no screenshot needed</div>`}
+
+            <div class="status-changer">
+                <div class="status-changer-label">Set Order Status</div>
+                ${lockedNotice}
+                <div class="status-grid">${statusButtons}</div>
+            </div>
+
+            ${rejectRow}
+            ${deleteRow}
+        `;
+
+        list.appendChild(card);
+    });
+};
+
+// ── GCash modal ────────────────────────────────────────────────────────────
+window.viewGcash = function(orderId) {
+    const src = screenshotStore[orderId];
+    if (!src) { alert("Screenshot not found."); return; }
+    document.getElementById("imgModalSrc").src = src;
+    document.getElementById("imgModalOverlay").classList.add("open");
+};
+window.closeImgModal = function() {
+    document.getElementById("imgModalOverlay").classList.remove("open");
+    document.getElementById("imgModalSrc").src = "";
+};
+
+// ── Delete modal ───────────────────────────────────────────────────────────
+window.openDelModal = function(orderId) {
+    pendingDeleteId = orderId;
+    pendingRejectId = null;
+    const order     = allOrdersCache.find(o => o.id === orderId);
+    const isRej     = order?.status === "rejected";
+    const title     = document.getElementById("delModalTitle");
+    const sub       = document.getElementById("delModalSub");
+    const btn       = document.getElementById("delConfirmBtn");
+
+    if (isRej) {
+        title.textContent = "🗑️ Delete Rejected Order?";
+        sub.innerHTML = `This will permanently remove this rejected order from your records. This action <strong>cannot be undone</strong>.`;
+    } else {
+        title.textContent = "🗑️ Delete Order?";
+        sub.innerHTML = `This will permanently remove this delivered order from your records. This action <strong>cannot be undone</strong>.`;
+    }
+    btn.textContent = "🗑️ Yes, Delete";
+    btn.className = "del-modal-confirm is-delete";
+    document.getElementById("delModalOverlay").classList.add("open");
+};
+
+// ── Reject modal ───────────────────────────────────────────────────────────
+window.openRejectModal = function(orderId) {
+    pendingRejectId = orderId;
+    pendingDeleteId = null;
+    const order = allOrdersCache.find(o => o.id === orderId);
+    const name  = order?.name || "this item";
+    const cust  = order?.customerUsername || order?.customer || "the customer";
+
+    const title = document.getElementById("delModalTitle");
+    const sub   = document.getElementById("delModalSub");
+    const btn   = document.getElementById("delConfirmBtn");
+    title.textContent = "🚫 Reject Order?";
+    sub.innerHTML = `You are about to reject <strong>${cust}'s</strong> order for <strong>"${name}"</strong>. The customer will see this order as rejected. This action <strong>cannot be undone</strong>.`;
+    btn.textContent = "🚫 Yes, Reject";
+    btn.className = "del-modal-confirm is-reject";
+    document.getElementById("delModalOverlay").classList.add("open");
+};
+
+window.closeDelModal = function() {
+    document.getElementById("delModalOverlay").classList.remove("open");
+    pendingDeleteId = null;
+    pendingRejectId = null;
+};
+
+document.getElementById("delConfirmBtn").addEventListener("click", async function() {
+    const btn = this;
+    btn.disabled = true;
+
+    // ── Handle Reject ──────────────────────────────────────────────────
+    if (pendingRejectId) {
+        btn.innerText = "Rejecting...";
+        try {
+            await updateOrderStatus(pendingRejectId, "rejected");
+            const order = allOrdersCache.find(o => o.id === pendingRejectId);
+            if (order) order.status = "rejected";
+            closeDelModal();
+            showToast("🚫 Order rejected.");
+            renderOrders();
+            updateCancelledTabBadge();
+        } catch(e) {
+            alert("Failed to reject order: " + e.message);
+        } finally {
+            btn.disabled  = false;
+            btn.innerText = "🚫 Yes, Reject";
+        }
+        return;
+    }
+
+    // ── Handle Delete ──────────────────────────────────────────────────
+    if (!pendingDeleteId) return;
+    btn.innerText = "Deleting...";
+    try {
+        await deleteDoc(doc(db, "orders", pendingDeleteId));
+        allOrdersCache = allOrdersCache.filter(o => o.id !== pendingDeleteId);
+        closeDelModal();
+        showToast("🗑️ Order deleted.");
+        renderOrders();
+        updateCancelledTabBadge();
+    } catch(e) {
+        alert("Failed to delete: " + e.message);
+    } finally {
+        btn.disabled  = false;
+        btn.innerText = "🗑️ Yes, Delete";
+    }
+});
+
+// ── Change status ──────────────────────────────────────────────────────────
+window.changeStatus = async function(orderId, newStatus) {
+    try {
+        await updateOrderStatus(orderId, newStatus);
+        const order = allOrdersCache.find(o => o.id === orderId);
+        if (order) order.status = newStatus;
+        showToast("Status updated: " + getStatusInfo(newStatus).label);
+        renderOrders();
+        updateCancelledTabBadge();
+    } catch(e) {
+        alert("Failed to update status: " + e.message);
+    }
+};
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function getStatusInfo(status) {
+    const map = {
+        "pending":    { label: "🕐 Pending",    bg: "#fff3cd", color: "#856404" },
+        "to-ship":    { label: "📦 To Ship",    bg: "#d1ecf1", color: "#0c5460" },
+        "to-receive": { label: "🚚 To Receive", bg: "#cce5ff", color: "#004085" },
+        "reserved":   { label: "📅 Reserved",   bg: "#fde8d8", color: "#7d3c00" },
+        "delivered":  { label: "✅ Delivered",  bg: "#d0f0e8", color: "#0a5940" },
+        "cancelled":  { label: "🚫 Cancelled",  bg: "#fde8e8", color: "#8b0000" },
+        "rejected":   { label: "🚫 Rejected",   bg: "#f5e0ff", color: "#5c007a" },
+    };
+    return map[status] || { label: status || "Unknown", bg: "#e2e3e5", color: "#383d41" };
+}
+
+function showToast(msg) {
+    const toast = document.getElementById("toast");
+    toast.innerText = msg;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 2500);
+}
+
+window.goBack = function() { window.location.href = "homeseller.html"; };
+
+setInterval(loadOrders, 10000);
+loadOrders();
+</script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add New Address</title>
+    <link rel="stylesheet" href="add-new-address.css">
+</head>
+<body>
+
+    <button class="back-btn" onclick="goBack()">&#8592; Back</button>
+
+    <h2 class="page-title" id="formTitle">Add New Address</h2>
+
+    <div class="form-card">
+
+        <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="fullName" placeholder="Enter full name">
+        </div>
+
+        <div class="form-group">
+            <label>Phone Number</label>
+            <input type="tel" id="phone" placeholder="e.g. 09123456789">
+        </div>
+
+        <div class="form-group">
+            <label>Street / Barangay</label>
+            <input type="text" id="street" placeholder="House no., street, barangay">
+        </div>
+
+        <div class="form-group">
+            <label>City / Municipality, Province</label>
+            <input type="text" id="city" placeholder="e.g. Iba, Zambales">
+        </div>
+
+        <div class="form-group">
+            <label>ZIP Code <span class="optional">(optional)</span></label>
+            <input type="text" id="zip" placeholder="e.g. 2201">
+        </div>
+
+        <div class="form-group">
+            <label>Label</label>
+            <div class="label-options">
+                <button type="button" class="label-btn active" onclick="selectLabel(this, 'Home')">Home</button>
+                <button type="button" class="label-btn" onclick="selectLabel(this, 'Work')">Work</button>
+                <button type="button" class="label-btn" onclick="selectLabel(this, 'Other')">Other</button>
+            </div>
+        </div>
+
+        <div class="form-group checkbox-group">
+            <input type="checkbox" id="isDefault">
+            <label for="isDefault">Set as Default Address</label>
+        </div>
+
+        <button class="save-btn" onclick="saveAddress()">Save Address</button>
+
+    </div>
+
+<script type="module">
+import { saveAddress as dbSaveAddress, getAddresses, setDefaultAddress } from "./db.js";
+
+const currentCustomer = localStorage.getItem("currentCustomer");
+const currentUID      = localStorage.getItem("currentCustomerUID");
+if (!currentCustomer || !currentUID) { alert("Please login first."); window.location.href = "login.html"; throw new Error(); }
+
+let selectedLabel = "Home";
+const editId = localStorage.getItem("editAddressId"); // Firestore doc ID
+
+// If editing, load the existing address
+if (editId) {
+    document.getElementById("formTitle").innerText = "Edit Address";
+    try {
+        const addrs = await getAddresses(currentUID);
+        const addr  = addrs.find(a => a.id === editId);
+        if (addr) {
+            document.getElementById("fullName").value   = addr.fullName  || "";
+            document.getElementById("phone").value      = addr.phone     || "";
+            document.getElementById("street").value     = addr.street    || "";
+            document.getElementById("city").value       = addr.city      || "";
+            document.getElementById("zip").value        = addr.zip       || "";
+            document.getElementById("isDefault").checked = addr.isDefault || false;
+            selectedLabel = addr.label || "Home";
+            document.querySelectorAll(".label-btn").forEach(btn => {
+                btn.classList.toggle("active", btn.innerText.trim() === selectedLabel);
+            });
+        }
+    } catch(e) { console.warn("Could not load address for edit:", e); }
+}
+
+window.selectLabel = function(btn, label) {
+    selectedLabel = label;
+    document.querySelectorAll(".label-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+};
+
+window.saveAddress = async function() {
+    const fullName  = document.getElementById("fullName").value.trim();
+    const phone     = document.getElementById("phone").value.trim();
+    const street    = document.getElementById("street").value.trim();
+    const city      = document.getElementById("city").value.trim();
+    const zip       = document.getElementById("zip").value.trim();
+    const isDefault = document.getElementById("isDefault").checked;
+
+    if (!fullName || !phone || !street || !city) { alert("Please fill in all required fields."); return; }
+
+    const addrData = { fullName, phone, street, city, zip, label: selectedLabel, isDefault };
+
+    try {
+        // If first address, auto-set as default
+        if (!editId) {
+            const existing = await getAddresses(currentUID);
+            if (existing.length === 0) addrData.isDefault = true;
+        }
+
+        const savedId = await dbSaveAddress(currentUID, addrData, editId || null);
+
+        // If set as default, update all others
+        if (isDefault) await setDefaultAddress(currentUID, savedId);
+
+        // Address saved to Firestore
+
+        localStorage.removeItem("editAddressId");
+        alert("Address saved!");
+        window.location.href = "address-book.html";
+    } catch(e) {
+        alert("Failed to save address: " + e.message);
+    }
+};
+
+window.goBack = function() {
+    localStorage.removeItem("editAddressId");
+    window.location.href = "address-book.html";
+};
+</script>
+
+</body>
+</html>

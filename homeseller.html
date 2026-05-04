@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DA LOCAL</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="homeseller.css">
+</head>
+<body>
+
+<header>
+    <input type="checkbox" id="toggler">
+    <label for="toggler" class="fas fa-bars"></label>
+
+    <a href="#" class="logo">D.LOC<span>.</span></a>
+
+    <nav class="navbar">
+        <a href="#home">home</a>
+        <a href="#about">about</a>
+    </nav>
+
+    <div class="icons">
+        <!-- Message icon -->
+        <a href="messages-seller.html" class="msg-icon-wrap" title="Messages">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+        </a>
+        <!-- Profile pic in header — click to go to seller profile -->
+        <img id="sellerPic" class="seller-avatar" src="" alt="Profile"
+             onclick="window.location.href='profile-seller.html'" title="View Profile">
+        <button type="button" class="log-out-btn" onclick="logout()">Log Out</button>
+    </div>
+</header>
+
+<section class="home" id="home">
+    <div class="content">
+
+        <!-- Seller intro: pic + name side by side -->
+        <div class="seller-intro">
+            <img id="sellerPicBig" src="" alt="Profile"
+                 onclick="window.location.href='profile-seller.html'" title="View Profile">
+            <div class="seller-intro-text">
+                <h3 id="welcomeName">WELCOME SELLER!!</h3>
+                <span>───── sell with passion ─────</span>
+            </div>
+        </div>
+
+        <!-- Go to Dashboard -->
+        <a href="seller dashboard.html" class="btn">Put your products</a>
+
+        <button class="approval-btn" onclick="goToApproval()">
+            <span class="approval-btn__icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 11l3 3L22 4"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+            </span>
+            <span class="approval-btn__text">Go to Approval</span>
+            <span class="approval-btn__arrow">→</span>
+            <span class="approval-btn__shine"></span>
+        </button>
+
+    </div>
+</section>
+
+<!-- ABOUT SECTION -->
+<section class="about" id="about">
+    <h1 class="heading"><span>About</span> Us</h1>
+    <div class="video-container">
+        <video src="images/dalocalvid.mp4" loop autoplay muted playsinline></video>
+    </div>
+    <p class="description">DA LOCAL is a platform that connects customers with local sellers, offering a wide range of products from various shops. We aim to support local businesses and provide customers with unique, locally-made items.</p>
+</section>
+
+<style>
+.approval-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 13px 28px 13px 20px;
+    background: linear-gradient(135deg, #1a472a 0%, #2d6a4f 60%, #40916c 100%);
+    color: #d8f3dc;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    overflow: hidden;
+    box-shadow: 0 4px 18px rgba(29,90,50,.35), 0 1px 4px rgba(0,0,0,.18);
+    transition: transform .15s ease, box-shadow .15s ease, background .2s ease;
+}
+.approval-btn:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 28px rgba(29,90,50,.45), 0 2px 8px rgba(0,0,0,.2);
+    background: linear-gradient(135deg, #1b5e35 0%, #3a7d5c 60%, #52b788 100%);
+}
+.approval-btn:active {
+    transform: scale(.97);
+    box-shadow: 0 2px 10px rgba(29,90,50,.3);
+}
+.approval-btn__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,.12);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+.approval-btn__text {
+    flex: 1;
+}
+.approval-btn__arrow {
+    font-size: 17px;
+    opacity: .7;
+    transition: transform .2s ease, opacity .2s;
+}
+.approval-btn:hover .approval-btn__arrow {
+    transform: translateX(4px);
+    opacity: 1;
+}
+.approval-btn__shine {
+    position: absolute;
+    top: 0; left: -75%;
+    width: 50%; height: 100%;
+    background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.13) 50%, transparent 100%);
+    transform: skewX(-20deg);
+    transition: left .55s ease;
+    pointer-events: none;
+}
+.approval-btn:hover .approval-btn__shine {
+    left: 130%;
+}
+</style>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyBaDezXv4aynvYTJaaZyXwIRIImLBEYwB0",
+    authDomain: "dalocal-8ceb3.firebaseapp.com",
+    projectId: "dalocal-8ceb3",
+    storageBucket: "dalocal-8ceb3.appspot.com",
+    messagingSenderId: "737186112999",
+    appId: "1:737186112999:web:f61d20523f4ac479f8c942"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+function applySellerData(data, username) {
+    const pic = data?.profilePic || "";
+    if (pic) {
+        document.getElementById("sellerPic").src = pic;
+        document.getElementById("sellerPicBig").src = pic;
+    } else {
+        document.getElementById("sellerPic").src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23555'/%3E%3C/svg%3E";
+        document.getElementById("sellerPicBig").src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23555'/%3E%3C/svg%3E";
+    }
+    document.getElementById("welcomeName").innerText = "WELCOME, " + username.toUpperCase() + "!!";
+}
+
+let isLoggingOut = false;
+
+onAuthStateChanged(auth, async (user) => {
+    if (isLoggingOut) return;
+    if (!user) {
+        const currentSeller = localStorage.getItem("currentSeller");
+        if (!currentSeller) {
+            window.location.href = "seller login.html";
+            return;
+        }
+        applySellerData({}, currentSeller);
+        return;
+    }
+
+    try {
+        const snap = await getDoc(doc(db, "sellers", user.uid));
+        if (snap.exists()) {
+            const data = snap.data();
+            localStorage.setItem("currentSeller", data.username);
+            localStorage.setItem("currentSellerUID", user.uid);
+            localStorage.setItem("currentSellerPic", data.profilePic || "");
+            applySellerData(data, data.username);
+        } else {
+            alert("Please login first.");
+            window.location.href = "seller login.html";
+        }
+    } catch(e) {
+        const currentSeller = localStorage.getItem("currentSeller");
+        if (!currentSeller) { window.location.href = "seller login.html"; return; }
+        applySellerData({}, currentSeller);
+    }
+});
+
+window.logout = function() {
+    isLoggingOut = true;
+    localStorage.removeItem("currentSeller");
+    localStorage.removeItem("currentSellerUID");
+    localStorage.removeItem("currentSellerPic");
+    signOut(auth).finally(() => {
+        window.location.href = "seller login.html";
+    });
+};
+
+window.goToApproval = function() { window.location.href = "approval-of-order.html"; };
+</script>
+
+</body>
+</html>

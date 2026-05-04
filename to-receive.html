@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To Receive</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f4ff;
+            color: #2d2d2d;
+            min-height: 100vh;
+            padding-bottom: 50px;
+        }
+ 
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+            padding: 20px 20px 28px;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -1px; left: 0; right: 0;
+            height: 20px;
+            background: #f0f4ff;
+            border-radius: 20px 20px 0 0;
+        }
+ 
+        .header-top {
+            display: flex; align-items: center; gap: 12px;
+            margin-bottom: 16px;
+        }
+        .back-btn {
+            background: rgba(255,255,255,0.12);
+            border: none; border-radius: 10px;
+            color: #fff; width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 18px;
+            transition: background .15s;
+            flex-shrink: 0;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.22); }
+ 
+        .header-title-wrap { flex: 1; }
+        .header-label {
+            font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+            color: rgba(255,255,255,0.5); text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .header-title {
+            font-size: 20px; font-weight: 800; color: #fff;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .header-title .icon { font-size: 22px; }
+ 
+        .header-count {
+            background: rgba(255,255,255,0.15);
+            border: 1.5px solid rgba(255,255,255,0.25);
+            color: #fff; border-radius: 20px;
+            padding: 4px 14px; font-size: 12px; font-weight: 700;
+            white-space: nowrap;
+        }
+ 
+        .search-wrap {
+            margin: 0 20px 14px;
+            display: flex; align-items: center; gap: 8px;
+            background: #fff; border: 1px solid #dde3ef;
+            border-radius: 12px; padding: 10px 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.07);
+        }
+        .search-wrap svg { color: #aaa; flex-shrink: 0; }
+        .search-wrap input {
+            border: none; outline: none; flex: 1;
+            font-size: 14px; background: transparent; color: #333;
+        }
+ 
+        .notice-banner {
+            margin: 0 20px 14px;
+            background: linear-gradient(135deg, #cce5ff, #e8f4ff);
+            border: 1.5px solid #9ecfff;
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex; align-items: flex-start; gap: 10px;
+        }
+        .notice-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+        .notice-text { font-size: 12px; color: #004085; line-height: 1.5; }
+        .notice-text strong { display: block; margin-bottom: 2px; font-size: 13px; }
+ 
+        .order-list {
+            padding: 0 20px;
+            display: flex; flex-direction: column; gap: 14px;
+        }
+ 
+        .empty-state {
+            text-align: center; padding: 60px 20px;
+        }
+        .empty-icon { font-size: 52px; margin-bottom: 12px; }
+        .empty-title { font-size: 17px; font-weight: 700; color: #5a6a8a; margin-bottom: 6px; }
+        .empty-sub { font-size: 13px; color: #aaa; }
+
+        .loading-state {
+            text-align: center; padding: 60px 20px;
+            color: #888; font-size: 14px;
+        }
+ 
+        .order-card {
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid #dde6ff;
+            box-shadow: 0 3px 12px rgba(26,26,46,.07);
+            overflow: hidden;
+            animation: fadeUp .25s ease both;
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+ 
+        .card-top {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 16px 8px;
+            border-bottom: 1px solid #f0f3fb;
+            background: #fafbff;
+        }
+        .card-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+ 
+        .type-badge {
+            font-size: 11px; font-weight: 700; padding: 3px 10px;
+            border-radius: 20px; letter-spacing: .3px;
+        }
+        .badge-order   { background: #e8f0fe; color: #3a5fcf; }
+        .badge-reserve { background: #fff3e0; color: #b05e00; }
+ 
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: #cce5ff; color: #004085;
+            font-size: 11px; font-weight: 700;
+            padding: 3px 10px; border-radius: 20px;
+        }
+        .status-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: #004085; animation: pulse 1.6s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: .5; transform: scale(.7); }
+        }
+ 
+        .card-date { font-size: 11px; color: #bbb; white-space: nowrap; }
+ 
+        .card-body {
+            display: flex; gap: 12px; padding: 14px 16px 12px;
+        }
+        .item-img {
+            width: 72px; height: 72px; border-radius: 12px;
+            object-fit: cover; border: 1px solid #eee;
+            background: #f4f4f4; flex-shrink: 0;
+        }
+        .item-info { flex: 1; min-width: 0; }
+        .item-name {
+            font-size: 15px; font-weight: 700; color: #1a1a2e;
+            margin-bottom: 5px; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .item-detail { font-size: 12px; color: #777; margin-top: 3px; }
+        .item-price { color: #1a7a4a; font-weight: 700; }
+ 
+        .seller-row {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 12px; color: #888; margin-top: 5px;
+        }
+ 
+        .tracking-row {
+            margin: 0 16px 14px;
+            background: #f0f7ff;
+            border: 1.5px dashed #9ecfff;
+            border-radius: 10px;
+            padding: 10px 14px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .tracking-icon { font-size: 20px; flex-shrink: 0; }
+        .tracking-info { flex: 1; }
+        .tracking-label { font-size: 11px; font-weight: 700; color: #004085; margin-bottom: 2px; }
+        .tracking-sub   { font-size: 11px; color: #6a90b8; }
+ 
+        .card-actions {
+            border-top: 1px solid #f0f3fb;
+            padding: 10px 16px 12px;
+            display: flex; gap: 8px; flex-wrap: wrap;
+        }
+        .btn-receive {
+            flex: 1; min-width: 140px;
+            padding: 10px 16px; border-radius: 10px;
+            font-size: 13px; font-weight: 700;
+            cursor: pointer; border: none;
+            background: linear-gradient(135deg, #1a1a2e, #0f3460);
+            color: #fff;
+            display: flex; align-items: center; justify-content: center; gap: 7px;
+            transition: opacity .15s, transform .1s;
+        }
+        .btn-receive:hover { opacity: .88; }
+        .btn-receive:active { transform: scale(.97); }
+ 
+        .btn-contact {
+            padding: 10px 16px; border-radius: 10px;
+            font-size: 13px; font-weight: 700;
+            cursor: pointer;
+            background: #f0f4ff;
+            border: 1.5px solid #c0ccee;
+            color: #3a5fcf;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            transition: background .15s;
+        }
+        .btn-contact:hover { background: #e0e8ff; }
+ 
+        .toast {
+            position: fixed; bottom: 28px; left: 50%;
+            transform: translateX(-50%) translateY(60px);
+            background: #1a1a2e; color: #fff;
+            padding: 12px 24px; border-radius: 30px;
+            font-size: 13px; font-weight: 600;
+            box-shadow: 0 4px 16px rgba(0,0,0,.2);
+            transition: transform .3s ease, opacity .3s ease;
+            opacity: 0; z-index: 999; white-space: nowrap;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+ 
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.5); z-index: 998;
+            align-items: flex-end; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-box {
+            background: #fff; border-radius: 20px 20px 0 0;
+            padding: 24px 24px 36px; width: 100%; max-width: 480px;
+            animation: slideUp .25s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to   { transform: translateY(0); }
+        }
+        .modal-handle {
+            width: 40px; height: 4px; border-radius: 3px;
+            background: #e0e0e0; margin: 0 auto 18px;
+        }
+        .modal-title { font-size: 17px; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; }
+        .modal-sub   { font-size: 13px; color: #777; margin-bottom: 20px; line-height: 1.5; }
+        .modal-item-preview {
+            display: flex; gap: 12px; align-items: center;
+            background: #f4f6ff; border-radius: 12px;
+            padding: 12px; margin-bottom: 20px;
+        }
+        .modal-item-preview img {
+            width: 52px; height: 52px; border-radius: 10px;
+            object-fit: cover; border: 1px solid #ddd;
+        }
+        .modal-item-name { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+        .modal-item-detail { font-size: 12px; color: #888; margin-top: 3px; }
+        .modal-btns { display: flex; gap: 10px; }
+        .modal-cancel {
+            flex: 1; padding: 12px; border-radius: 12px;
+            border: 1.5px solid #dde3ef; background: #f4f6f9;
+            font-size: 14px; font-weight: 700; color: #5a6a8a;
+            cursor: pointer;
+        }
+        .modal-confirm {
+            flex: 2; padding: 12px; border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #1a1a2e, #0f3460);
+            color: #fff; font-size: 14px; font-weight: 700;
+            cursor: pointer;
+            transition: opacity .15s;
+        }
+        .modal-confirm:hover { opacity: .88; }
+        .modal-confirm:disabled { opacity: .5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+ 
+    <div class="header">
+        <div class="header-top">
+            <button class="back-btn" onclick="goBack()">&#8592;</button>
+            <div class="header-title-wrap">
+                <div class="header-label">My Orders</div>
+                <div class="header-title">
+                    <span class="icon">🚚</span> To Receive
+                </div>
+            </div>
+            <span class="header-count" id="orderCount">0 orders</span>
+        </div>
+    </div>
+ 
+    <div class="search-wrap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchInput" placeholder="Search item or seller..." oninput="renderOrders()">
+    </div>
+ 
+    <div class="notice-banner">
+        <div class="notice-icon">📦</div>
+        <div class="notice-text">
+            <strong>Your orders are on their way!</strong>
+            Once you receive your item, tap <em>"Order Received"</em> to confirm and proceed to rating.
+        </div>
+    </div>
+ 
+    <div class="order-list" id="orderList">
+        <div class="loading-state">Loading orders...</div>
+    </div>
+ 
+    <div class="toast" id="toast"></div>
+ 
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-box">
+            <div class="modal-handle"></div>
+            <div class="modal-title">Confirm Receipt?</div>
+            <div class="modal-sub">By confirming, you agree that you've received this item in good condition. This will move the order to "To Rate".</div>
+            <div class="modal-item-preview" id="modalPreview">
+                <img id="modalImg" src="" alt="">
+                <div>
+                    <div class="modal-item-name" id="modalName">—</div>
+                    <div class="modal-item-detail" id="modalDetail">—</div>
+                </div>
+            </div>
+            <div class="modal-btns">
+                <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+                <button class="modal-confirm" id="modalConfirmBtn">✓ Yes, I Received It</button>
+            </div>
+        </div>
+    </div>
+ 
+<script type="module">
+import { getOrdersByCustomer, updateOrderStatus, getAllStores } from "./db.js";
+
+const currentCustomer    = localStorage.getItem("currentCustomer");
+const currentUID         = localStorage.getItem("currentCustomerUID") || "";
+
+if (!currentCustomer) {
+    alert("Please login first.");
+    window.location.href = "login.html";
+    throw new Error("stop");
+}
+
+// ── Cache ──────────────────────────────────────────────────────────────────
+let _toReceiveOrders = [];   // flat list of orders with status === "to-receive"
+let _storeCache      = null;
+
+// ── Store name helper ──────────────────────────────────────────────────────
+async function getStoreName(sellerUsername) {
+    if (!_storeCache) {
+        try { _storeCache = await getAllStores(); }
+        catch(e) { _storeCache = []; }
+    }
+    const store = _storeCache.find(s => s.seller === sellerUsername);
+    return store ? store.name : sellerUsername;
+}
+
+// ── Load from Firestore ────────────────────────────────────────────────────
+async function loadOrders() {
+    try {
+        const all = await getOrdersByCustomer(currentUID);
+        // FIX: filter only "to-receive" status from Firestore
+        _toReceiveOrders = all.filter(o => o.status === "to-receive");
+    } catch(e) {
+        console.error("Failed to load orders:", e);
+        _toReceiveOrders = [];
+    }
+    renderOrders();
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+async function renderOrders() {
+    const query = document.getElementById("searchInput").value.trim().toLowerCase();
+    const list  = document.getElementById("orderList");
+    const countEl = document.getElementById("orderCount");
+
+    // Update count badge with TOTAL (unfiltered)
+    const total = _toReceiveOrders.length;
+    countEl.innerText = total + (total === 1 ? " order" : " orders");
+
+    // Apply search filter
+    let orders = _toReceiveOrders;
+    if (query) {
+        orders = orders.filter(o =>
+            (o.name   && o.name.toLowerCase().includes(query)) ||
+            (o.sellerUsername && o.sellerUsername.toLowerCase().includes(query)) ||
+            (o.seller && o.seller.toLowerCase().includes(query))
+        );
+    }
+
+    list.innerHTML = "";
+
+    if (orders.length === 0) {
+        list.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🚚</div>
+                <div class="empty-title">No orders to receive yet</div>
+                <div class="empty-sub">When a seller ships your order, it will appear here.</div>
+            </div>`;
+        return;
+    }
+
+    for (let i = 0; i < orders.length; i++) {
+        const order = orders[i];
+        const card  = document.createElement("div");
+        card.className = "order-card";
+        card.style.animationDelay = (i * 0.06) + "s";
+
+        const isReserve  = order.type === "reservation";
+        const rawDate    = order.createdAt?.seconds
+            ? new Date(order.createdAt.seconds * 1000)
+            : order.createdAt ? new Date(order.createdAt) : null;
+        const displayDate = rawDate
+            ? rawDate.toLocaleDateString("en-PH", { year:"numeric", month:"short", day:"numeric" })
+            : "—";
+        const totalPrice = (parseFloat(order.price || 0) * (order.qty || 1)).toFixed(0);
+
+        // seller display name — use sellerUsername field (from db.js placeOrder)
+        const sellerKey  = order.sellerUsername || order.seller || "";
+        const storeName  = await getStoreName(sellerKey);
+
+        card.innerHTML = `
+            <div class="card-top">
+                <div class="card-meta">
+                    <span class="type-badge ${isReserve ? 'badge-reserve' : 'badge-order'}">
+                        ${isReserve ? '📅 Reservation' : '🛒 Order'}
+                    </span>
+                    <span class="status-pill">
+                        <span class="status-dot"></span>
+                        To Receive
+                    </span>
+                </div>
+                <span class="card-date">${displayDate}</span>
+            </div>
+
+            <div class="card-body">
+                <img class="item-img" src="${order.image || ''}" alt="${order.name || ''}">
+                <div class="item-info">
+                    <div class="item-name">${order.name || '—'}</div>
+                    <div class="item-detail">
+                        Size: <strong>${order.size || '—'}</strong> &nbsp;|&nbsp;
+                        Qty: <strong>${order.qty || 1}</strong>
+                    </div>
+                    <div class="item-detail">
+                        Total: <span class="item-price">₱${totalPrice}</span>
+                    </div>
+                    ${order.referenceNum ? `<div class="item-detail">Ref #: <strong>${order.referenceNum}</strong></div>` : ''}
+                    <div class="seller-row">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                            <polyline points="9 22 9 12 15 12 15 22"/>
+                        </svg>
+                        ${storeName}
+                    </div>
+                </div>
+            </div>
+
+            <div class="tracking-row">
+                <div class="tracking-icon">📍</div>
+                <div class="tracking-info">
+                    <div class="tracking-label">Your order is on the way</div>
+                    <div class="tracking-sub">Seller has prepared and shipped your item</div>
+                </div>
+            </div>
+
+            <div class="card-actions">
+                <button class="btn-receive"
+                    data-id="${order.id}"
+                    data-name="${escAttr(order.name)}"
+                    data-image="${escAttr(order.image)}"
+                    data-size="${escAttr(order.size)}"
+                    data-qty="${order.qty || 1}"
+                    data-price="${totalPrice}"
+                    onclick="openConfirm(this)">
+                    ✓ Order Received
+                </button>
+                <button class="btn-contact" onclick="contactSeller('${escAttr(sellerKey)}', '${escAttr(storeName)}')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    Contact
+                </button>
+            </div>
+        `;
+        list.appendChild(card);
+    }
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function escAttr(val) {
+    return (val || "").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+window.contactSeller = function(seller, storeName) {
+    showToast("Redirecting to seller: " + (storeName || seller));
+    // TODO: redirect to messages page
+};
+
+// ── Confirm Modal ──────────────────────────────────────────────────────────
+let pendingOrderId = null;
+
+window.openConfirm = function(btn) {
+    pendingOrderId = btn.dataset.id;
+    document.getElementById("modalImg").src           = btn.dataset.image || "";
+    document.getElementById("modalName").innerText    = btn.dataset.name  || "—";
+    document.getElementById("modalDetail").innerText  =
+        `Size: ${btn.dataset.size || "—"}  |  Qty: ${btn.dataset.qty}  |  ₱${btn.dataset.price}`;
+    document.getElementById("confirmModal").classList.add("open");
+};
+
+window.closeModal = function() {
+    document.getElementById("confirmModal").classList.remove("open");
+    pendingOrderId = null;
+};
+
+document.getElementById("modalConfirmBtn").addEventListener("click", async function() {
+    if (!pendingOrderId) return;
+
+    const btn = this;
+    btn.disabled    = true;
+    btn.innerText   = "Confirming...";
+
+    try {
+       await updateOrderStatus(pendingOrderId, "delivered");
+
+        // Remove from local cache so UI updates immediately
+        _toReceiveOrders = _toReceiveOrders.filter(o => o.id !== pendingOrderId);
+
+        closeModal();
+        showToast("✓ Order confirmed! Please leave a rating.");
+        renderOrders();
+    } catch(e) {
+        showToast("❌ Failed to confirm. Please try again.");
+        console.error(e);
+    } finally {
+        btn.disabled  = false;
+        btn.innerText = "✓ Yes, I Received It";
+    }
+});
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function showToast(msg) {
+    const toast = document.getElementById("toast");
+    toast.innerText = msg;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 2800);
+}
+
+// ── Auto-refresh every 5s (picks up seller status changes) ───────────────
+setInterval(loadOrders, 5000);
+
+window.goBack = function() { window.location.href = "customer-profile.html"; };
+
+// ── Init ───────────────────────────────────────────────────────────────────
+window.renderOrders = renderOrders;   // expose for search input oninput
+loadOrders();
+</script>
+</body>
+</html>

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop</title>
+    <link rel="stylesheet" href="shop.css">
+    <style>
+        .availability-badge { display:inline-block;font-size:11px;padding:3px 10px;border-radius:99px;font-weight:bold;margin-top:4px; }
+        .avail   { background-color:#d4edda;color:#155724; }
+        .unavail { background-color:#e2e3e5;color:#383d41; }
+        .product-card.unavailable { opacity:0.55;pointer-events:none; }
+        .card-actions { display:flex;gap:6px;padding:0 10px 10px; }
+        .btn-cart,.btn-reserve { flex:1;padding:7px 4px;border:none;border-radius:8px;font-size:0.75rem;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;transition:opacity 0.2s,transform 0.15s; }
+        .btn-cart    { background:#e74c3c;color:#fff; }
+        .btn-reserve { background:#1e1e1e;color:#fff;border:1px solid rgba(255,255,255,0.2); }
+        .btn-buy { width:100%;padding:8px 4px;border:none;border-radius:8px;font-size:0.75rem;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#f39c12,#e67e22);color:#fff;transition:opacity 0.2s,transform 0.15s; }
+        .btn-cart:hover,.btn-reserve:hover,.btn-buy:hover { opacity:0.85;transform:scale(0.97); }
+
+        .modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:flex-end;justify-content:center; }
+        .modal-overlay.open { display:flex; }
+        .modal-sheet { background:#1e1e1e;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:500px;animation:slideUp 0.25s ease;position:relative;max-height:90vh;overflow-y:auto; }
+        @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+        .modal-close { position:absolute;top:14px;right:18px;background:none;border:none;color:#aaa;font-size:1.4rem;cursor:pointer;line-height:1; }
+        .modal-product { display:flex;gap:14px;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.1); }
+        .modal-product img { width:70px;height:70px;object-fit:cover;border-radius:10px; }
+        .modal-product-info h4 { font-size:1rem;color:#fff;margin-bottom:4px; }
+        .modal-product-info p  { font-size:0.9rem;color:#e74c3c;font-weight:600; }
+        .size-label,.qty-label,.date-label,.payment-label { font-size:0.78rem;color:#aaa;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px; }
+        .size-options { display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap; }
+        .size-btn { padding:8px 20px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.2);background:transparent;color:#ccc;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;transition:all 0.2s; }
+        .size-btn.selected,.size-btn:hover { border-color:#e74c3c;color:#e74c3c;background:rgba(231,76,60,0.1); }
+        .qty-row { display:flex;align-items:center;gap:14px;margin-bottom:22px; }
+        .qty-btn { width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);background:transparent;color:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s; }
+        .qty-btn:hover { background:rgba(255,255,255,0.1); }
+        .qty-num { font-size:1rem;font-weight:600;color:#fff;min-width:24px;text-align:center; }
+        .date-input { width:100%;background:#2a2a2a;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px 14px;font-size:0.9rem;color:#fff;font-family:'Poppins',sans-serif;margin-bottom:20px;outline:none; }
+        .date-input:focus { border-color:#5bc8f5; }
+        .payment-options { display:flex;flex-direction:column;gap:10px;margin-bottom:20px; }
+        .payment-option { display:flex;align-items:center;gap:12px;background:#2a2a2a;border:1.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color 0.2s,background 0.2s; }
+        .payment-option.selected { border-color:#e74c3c;background:rgba(231,76,60,0.08); }
+        .payment-option input[type="radio"] { accent-color:#e74c3c;width:16px;height:16px;flex-shrink:0; }
+        .payment-icon { font-size:1.4rem;width:32px;text-align:center; }
+        .payment-info { flex:1; }
+        .payment-name { font-size:0.88rem;font-weight:600;color:#fff; }
+        .payment-desc { font-size:0.75rem;color:#888;margin-top:2px; }
+        .gcash-section { display:none;background:#2a2a2a;border-radius:10px;padding:14px;margin-bottom:16px; }
+        .gcash-section.show { display:block; }
+        .gcash-number { font-size:0.85rem;color:#5bc8f5;font-weight:600;margin-bottom:10px; }
+        .gcash-upload-label { display:flex;align-items:center;gap:8px;background:#1e1e1e;border:1.5px dashed rgba(255,255,255,0.2);border-radius:8px;padding:10px 14px;cursor:pointer;font-size:0.82rem;color:#aaa;transition:border-color 0.2s; }
+        .gcash-upload-label:hover { border-color:#5bc8f5;color:#5bc8f5; }
+        .gcash-preview { width:100%;max-height:160px;object-fit:contain;border-radius:8px;margin-top:10px;display:none; }
+        .modal-action-btn { width:100%;padding:13px;border:none;border-radius:30px;font-size:1rem;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:all 0.2s; }
+        .cart-confirm    { background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff;box-shadow:0 6px 20px rgba(231,76,60,0.4); }
+        .reserve-confirm { background:linear-gradient(135deg,#1a1a2e,#2563eb);color:#fff;box-shadow:0 6px 20px rgba(37,99,235,0.4); }
+        .buy-confirm     { background:linear-gradient(135deg,#f39c12,#e67e22);color:#fff;box-shadow:0 6px 20px rgba(230,126,34,0.4); }
+        .modal-action-btn:hover { transform:translateY(-2px);opacity:0.9; }
+
+        .cart-float { position:fixed;bottom:24px;right:20px;z-index:500;background:#e74c3c;color:#fff;border:none;border-radius:50px;padding:12px 20px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;display:flex;align-items:center;gap:8px;box-shadow:0 6px 20px rgba(231,76,60,0.5);transition:transform 0.2s; }
+        .cart-float:hover { transform:scale(1.05); }
+        .cart-float-count { background:#fff;color:#e74c3c;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800; }
+
+        .toast { position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:#333;color:#fff;padding:10px 22px;border-radius:30px;font-size:0.85rem;font-weight:600;opacity:0;transition:all 0.3s;z-index:9999;pointer-events:none;white-space:nowrap; }
+        .toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
+
+        /* LOADING */
+        #loadingOverlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;justify-content:center;align-items:center;flex-direction:column;gap:12px;color:#fff;font-family:'Poppins',sans-serif; }
+        #loadingOverlay.show { display:flex; }
+        .spinner { width:36px;height:36px;border:4px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+
+        /* CAROUSEL */
+        .shop-carousel-wrap { position:relative;width:100%;max-width:600px;margin:0 auto 0;overflow:hidden;border-radius:12px;background:#111;aspect-ratio:4/3; }
+        .shop-carousel-track { display:flex;height:100%;transition:transform 0.35s ease; }
+        .shop-carousel-slide { min-width:100%;height:100%;overflow:hidden; }
+        .shop-carousel-slide img { width:100%;height:100%;object-fit:cover;display:block; }
+        .shop-carousel-btn { position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.5);color:#fff;border:none;width:34px;height:34px;border-radius:50%;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;backdrop-filter:blur(4px); }
+        .shop-carousel-btn.prev { left:8px; }
+        .shop-carousel-btn.next { right:8px; }
+        .shop-carousel-dots { display:flex;justify-content:center;gap:6px;padding:8px 0 0; }
+        .shop-carousel-dot { width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.25);cursor:pointer;transition:background 0.2s; }
+        .shop-carousel-dot.active { background:#e74c3c; }
+
+        /* LOCATION */
+        .shop-location-card { background:#1e1e1e;border-radius:14px;padding:16px 18px;margin:0 12px 16px; }
+        .shop-location-title { font-size:0.82rem;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px; }
+        .shop-location-text { font-size:0.85rem;color:#ccc;margin-bottom:10px; }
+        .shop-map-frame { width:100%;height:180px;border:none;border-radius:10px; }
+    </style>
+</head>
+<body>
+
+<div id="loadingOverlay"><div class="spinner"></div><span id="loadingMsg">Loading store...</span></div>
+
+<button class="back-btn" id="backBtn">&#8592; Back</button>
+
+<div class="banner" id="banner">
+    <div class="banner-bg" id="bannerBg"></div>
+    <div class="banner-overlay"></div>
+    <img class="banner-logo" id="storeLogo" src="" alt="Store Logo">
+    <div class="banner-info">
+        <h1 id="storeName">Loading...</h1>
+        <p id="storeMotto"></p>
+    </div>
+</div>
+
+<div class="menu-section">
+    <h2>Menu</h2>
+    <h3 class="top-label">Top Products:</h3>
+    <div class="product-grid" id="productGrid"><p class="empty">Loading products...</p></div>
+</div>
+
+<!-- STORE PHOTOS CAROUSEL -->
+<div id="shopCarouselSection" style="margin:0 12px 16px;display:none;">
+    <div class="shop-carousel-wrap" id="shopCarouselWrap">
+        <div class="shop-carousel-track" id="shopCarouselTrack"></div>
+        <button class="shop-carousel-btn prev" id="shopPrevBtn">&#8249;</button>
+        <button class="shop-carousel-btn next" id="shopNextBtn">&#8250;</button>
+    </div>
+    <div class="shop-carousel-dots" id="shopCarouselDots"></div>
+</div>
+
+<!-- STORE LOCATION -->
+<div class="shop-location-card" id="shopLocationCard" style="display:none;">
+    <div class="shop-location-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e74c3c" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Store Location
+    </div>
+    <p class="shop-location-text" id="shopLocationText"></p>
+    <iframe class="shop-map-frame" id="shopMapFrame" allowfullscreen loading="lazy" style="display:none;"></iframe>
+</div>
+
+<div class="shop-info-card">
+    <p><strong>Owner:</strong> <span id="infoOwner">—</span></p>
+    <p><strong>Contact Number:</strong> <span id="infoPhone">—</span></p>
+    <p><strong>GCash Number:</strong> <span id="infoGcash">—</span></p>
+    <p><strong>About the Shop:</strong> <span id="infoAbout">—</span></p>
+    <p><strong>Social Media:</strong>
+        <a id="infoFacebook" href="#" target="_blank"></a>
+        <a id="infoInstagram" href="#" target="_blank" style="margin-left:8px;"></a>
+    </p>
+</div>
+
+<button class="cart-float" id="cartFloat" style="display:none;">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+    View Cart <span class="cart-float-count" id="cartCount">0</span>
+</button>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal-sheet" id="modalSheet">
+        <button class="modal-close" id="modalCloseBtn">&#10005;</button>
+        <div class="modal-product">
+            <img id="modalImg" src="" alt="">
+            <div class="modal-product-info">
+                <h4 id="modalName"></h4>
+                <p id="modalPrice"></p>
+            </div>
+        </div>
+        <div class="size-label" id="sizeLabel" style="display:none;">Select Size</div>
+        <div class="size-options" id="sizeOptions" style="display:none;">
+            <button class="size-btn selected">Small</button>
+            <button class="size-btn">Medium</button>
+            <button class="size-btn">Large</button>
+        </div>
+        <div class="qty-label">Quantity</div>
+        <div class="qty-row">
+            <button class="qty-btn" id="qtyMinus">−</button>
+            <span class="qty-num" id="qtyNum">1</span>
+            <button class="qty-btn" id="qtyPlus">+</button>
+        </div>
+        <div id="reserveSection" style="display:none;">
+            <div class="date-label">Reservation Date</div>
+            <input type="date" class="date-input" id="reserveDate">
+            <div class="payment-label">Payment Method</div>
+            <div class="payment-options">
+                <label class="payment-option selected" id="payGcashOpt">
+                    <input type="radio" name="paymentMethod" value="gcash" checked>
+                    <span class="payment-icon">📱</span>
+                    <div class="payment-info">
+                        <div class="payment-name">GCash</div>
+                        <div class="payment-desc">Upload your payment screenshot</div>
+                    </div>
+                </label>
+            </div>
+            <div class="gcash-section show" id="gcashSection">
+                <div class="gcash-number">GCash Number: <span id="shopGcash">—</span></div>
+                <label class="gcash-upload-label">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Upload GCash Screenshot
+                    <input type="file" id="gcashUpload" accept="image/*" style="display:none;">
+                </label>
+                <img id="gcashPreview" class="gcash-preview" src="" alt="GCash screenshot">
+            </div>
+        </div>
+        <button class="modal-action-btn cart-confirm" id="modalActionBtn">Add to Cart</button>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import {
+    getAllStores, getSellerProfile, getProductsBySeller,
+    getCart, saveCart, placeOrder, getOrdersByCustomer
+} from "./db.js";
+
+// ── AUTH & NAV CHECK ─────────────────────────────────────────────────────────
+const currentCustomer = localStorage.getItem("currentCustomer");
+const currentUID      = localStorage.getItem("currentCustomerUID");
+if (!currentCustomer || !currentUID) {
+    alert("Please login first.");
+    window.location.replace("login.html");
+    throw new Error("stop");
+}
+
+const selectedStore  = localStorage.getItem("selectedStore");
+const selectedSeller = localStorage.getItem("selectedSeller");
+if (!selectedStore && !selectedSeller) {
+    alert("No store selected.");
+    window.location.replace("seller.html");
+    throw new Error("stop");
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function showLoading(msg) {
+    document.getElementById("loadingMsg").textContent = msg || "Loading...";
+    document.getElementById("loadingOverlay").classList.add("show");
+}
+function hideLoading() {
+    document.getElementById("loadingOverlay").classList.remove("show");
+}
+function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.innerText = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+// ── BACK BUTTON ──────────────────────────────────────────────────────────────
+document.getElementById("backBtn").addEventListener("click", () => {
+    window.location.href = "seller.html";
+});
+
+// ── CART FLOAT ───────────────────────────────────────────────────────────────
+document.getElementById("cartFloat").addEventListener("click", () => {
+    window.location.href = "cart.html";
+});
+
+// ── LOAD STORE ───────────────────────────────────────────────────────────────
+showLoading("Loading store...");
+let sellerUsername = selectedSeller || selectedStore;
+
+try {
+    const stores = await getAllStores();
+    const store  = stores.find(s => s.name === selectedStore) || stores.find(s => s.seller === selectedSeller);
+    if (store) {
+        sellerUsername = store.seller || sellerUsername;
+        document.getElementById("storeName").innerText = store.name;
+        if (store.photo) {
+            document.getElementById("storeLogo").src = store.photo;
+            document.getElementById("bannerBg").style.backgroundImage = `url('${store.photo}')`;
+        }
+    }
+} catch(e) {
+    console.error("Store load failed:", e);
+}
+
+// ── LOAD SELLER PROFILE ───────────────────────────────────────────────────────
+let profile = {};
+try {
+    profile = await getSellerProfile(sellerUsername);
+} catch(e) { console.error("Profile load failed:", e); }
+
+document.getElementById("storeMotto").innerText = profile.storeMotto || "";
+document.getElementById("infoOwner").innerText  = profile.ownerName   || "—";
+document.getElementById("infoAbout").innerText  = profile.aboutShop   || "—";
+document.getElementById("infoPhone").innerText  = profile.phoneNumber || "—";
+document.getElementById("infoGcash").innerText  = profile.gcashNumber || "—";
+document.getElementById("shopGcash").innerText  = profile.gcashNumber || profile.phoneNumber || "—";
+
+const fb = document.getElementById("infoFacebook");
+const ig = document.getElementById("infoInstagram");
+if (profile.facebookLink && profile.facebookLink !== "Facebook link") {
+    fb.href = profile.facebookLink; fb.innerText = profile.facebookLink;
+} else { fb.innerText = "—"; }
+if (profile.instagramLink && profile.instagramLink !== "Instagram Link") {
+    ig.href = profile.instagramLink; ig.innerText = profile.instagramLink;
+}
+
+// ── CAROUSEL ─────────────────────────────────────────────────────────────────
+let carouselIdx = 0;
+const shopPhotos = Array.isArray(profile.storePhotos) ? profile.storePhotos : [];
+if (shopPhotos.length > 0) {
+    document.getElementById("shopCarouselSection").style.display = "block";
+    const track = document.getElementById("shopCarouselTrack");
+    const dots  = document.getElementById("shopCarouselDots");
+    shopPhotos.forEach((p, i) => {
+        const slide = document.createElement("div");
+        slide.className = "shop-carousel-slide";
+        const imgSrc = typeof p === "string" ? p : (p.url || p.dataUrl || "");
+        slide.innerHTML = `<img src="${imgSrc}" alt="Store photo" onerror="this.parentElement.style.display='none'">`;
+        track.appendChild(slide);
+        const dot = document.createElement("div");
+        dot.className = "shop-carousel-dot" + (i === 0 ? " active" : "");
+        dot.addEventListener("click", () => goToSlide(i));
+        dots.appendChild(dot);
+    });
+    const showNavBtns = shopPhotos.length > 1;
+    document.getElementById("shopPrevBtn").style.display = showNavBtns ? "flex" : "none";
+    document.getElementById("shopNextBtn").style.display = showNavBtns ? "flex" : "none";
+}
+function goToSlide(idx) {
+    carouselIdx = idx;
+    document.getElementById("shopCarouselTrack").style.transform = `translateX(-${idx * 100}%)`;
+    document.querySelectorAll(".shop-carousel-dot").forEach((d, i) => d.classList.toggle("active", i === idx));
+}
+document.getElementById("shopPrevBtn").addEventListener("click", () => goToSlide((carouselIdx - 1 + shopPhotos.length) % shopPhotos.length));
+document.getElementById("shopNextBtn").addEventListener("click", () => goToSlide((carouselIdx + 1) % shopPhotos.length));
+const wrap = document.getElementById("shopCarouselWrap");
+let touchX = 0;
+wrap.addEventListener("touchstart", e => { touchX = e.touches[0].clientX; });
+wrap.addEventListener("touchend",   e => {
+    const d = touchX - e.changedTouches[0].clientX;
+    if (Math.abs(d) > 40) goToSlide(d > 0 ? (carouselIdx+1)%shopPhotos.length : (carouselIdx-1+shopPhotos.length)%shopPhotos.length);
+});
+
+// ── LOCATION ─────────────────────────────────────────────────────────────────
+if (profile.location) {
+    document.getElementById("shopLocationCard").style.display = "block";
+    document.getElementById("shopLocationText").innerText = profile.location;
+    const frame = document.getElementById("shopMapFrame");
+    frame.src = `https://maps.google.com/maps?q=${encodeURIComponent(profile.location)}&output=embed&z=15`;
+    frame.style.display = "block";
+}
+
+// ── LOAD PRODUCTS ─────────────────────────────────────────────────────────────
+showLoading("Loading products...");
+let storeProducts = [];
+try {
+    storeProducts = await getProductsBySeller(sellerUsername);
+} catch(e) {
+    console.error("Products load failed:", e);
+}
+
+const grid = document.getElementById("productGrid");
+if (storeProducts.length === 0) {
+    grid.innerHTML = "<p class='empty'>No products yet.</p>";
+} else {
+    grid.innerHTML = "";
+    storeProducts.forEach((p, index) => {
+        const isAvail = p.available !== false;
+        const card = document.createElement("div");
+        card.className = "product-card" + (isAvail ? "" : " unavailable");
+        card.innerHTML = `
+            <img src="${p.image}" alt="${p.name}" onerror="this.style.display='none'">
+            <h4>${p.name}</h4>
+            <p>₱${p.price}</p>
+            <span class="availability-badge ${isAvail ? 'avail' : 'unavail'}">${isAvail ? 'Available' : 'Not Available'}</span>
+            ${isAvail ? `
+            <div class="card-actions">
+                <button class="btn-cart"    data-idx="${index}" data-mode="cart">Add to Cart</button>
+                <button class="btn-reserve" data-idx="${index}" data-mode="reserve">Reserve</button>
+            </div>
+            <div class="card-actions" style="padding-top:0;">
+                <button class="btn-buy" data-idx="${index}" data-mode="buy">Buy Now</button>
+            </div>` : ""}
+        `;
+        grid.appendChild(card);
+    });
+
+    // Attach button events (no inline onclick — avoids module scope issues)
+    grid.querySelectorAll("[data-mode]").forEach(btn => {
+        btn.addEventListener("click", () => openModal(
+            parseInt(btn.dataset.idx), btn.dataset.mode
+        ));
+    });
+}
+
+hideLoading();
+
+// ── CART BADGE ────────────────────────────────────────────────────────────────
+async function updateCartBadge() {
+    try {
+        const cart  = await getCart(currentUID);
+        const total = (cart || []).reduce((s, i) => s + (i.qty || 1), 0);
+        document.getElementById("cartCount").innerText = total;
+        document.getElementById("cartFloat").style.display = total > 0 ? "flex" : "none";
+    } catch(e) {}
+}
+await updateCartBadge();
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+let currentMode    = "cart";
+let currentProduct = null;
+let quantity       = 1;
+let gcashData      = null;
+
+function openModal(index, mode) {
+    currentProduct = storeProducts[index];
+    currentMode    = mode;
+    quantity       = 1;
+    gcashData      = null;
+
+    document.getElementById("modalImg").src        = currentProduct.image;
+    document.getElementById("modalName").innerText = currentProduct.name;
+    document.getElementById("qtyNum").innerText    = 1;
+
+    // Show size selector only if product has S/M/L prices
+    const hasSizes = currentProduct.prices &&
+        typeof currentProduct.prices === 'object' &&
+        (currentProduct.prices['Small'] || currentProduct.prices['Medium'] || currentProduct.prices['Large']);
+    document.getElementById("sizeLabel").style.display  = hasSizes ? "block" : "none";
+    document.getElementById("sizeOptions").style.display = hasSizes ? "flex"  : "none";
+
+    // Reset size selection
+    document.querySelectorAll(".size-btn").forEach((b, i) => b.classList.toggle("selected", i === 0));
+
+    // Update price based on size (or flat price)
+    updateModalPrice();
+
+    // Reset gcash upload
+    document.getElementById("gcashUpload").value = "";
+    document.getElementById("gcashPreview").style.display = "none";
+
+    // Show/hide reserve section
+    document.getElementById("reserveSection").style.display = mode === "reserve" ? "block" : "none";
+
+    // Set action button
+    const btn = document.getElementById("modalActionBtn");
+    if (mode === "cart") {
+        btn.textContent = "Add to Cart";
+        btn.className   = "modal-action-btn cart-confirm";
+    } else if (mode === "buy") {
+        btn.textContent = "Buy Now — Go to Payment";
+        btn.className   = "modal-action-btn buy-confirm";
+    } else {
+        btn.textContent = "Confirm Reservation";
+        btn.className   = "modal-action-btn reserve-confirm";
+        const today = new Date().toISOString().split("T")[0];
+        document.getElementById("reserveDate").min   = today;
+        document.getElementById("reserveDate").value = today;
+    }
+
+    document.getElementById("modalOverlay").classList.add("open");
+}
+
+function getSelectedSize() {
+    const sel = document.querySelector(".size-btn.selected");
+    return sel ? sel.innerText : "Small";
+}
+
+function getPrice() {
+    const prices = currentProduct?.prices;
+    if (prices && Object.keys(prices).length > 0) {
+        const size = getSelectedSize();
+        return prices[size] || currentProduct.price;
+    }
+    return currentProduct?.price || "0";
+}
+
+function updateModalPrice() {
+    if (!currentProduct) return;
+    document.getElementById("modalPrice").innerText = "₱" + getPrice();
+}
+
+// Size buttons
+document.querySelectorAll(".size-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll(".size-btn").forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        updateModalPrice();
+    });
+});
+
+// Qty buttons
+document.getElementById("qtyMinus").addEventListener("click", () => {
+    if (quantity > 1) { quantity--; document.getElementById("qtyNum").innerText = quantity; }
+});
+document.getElementById("qtyPlus").addEventListener("click", () => {
+    quantity++; document.getElementById("qtyNum").innerText = quantity;
+});
+
+// Close modal
+document.getElementById("modalCloseBtn").addEventListener("click", () => {
+    document.getElementById("modalOverlay").classList.remove("open");
+});
+document.getElementById("modalOverlay").addEventListener("click", e => {
+    if (e.target === document.getElementById("modalOverlay"))
+        document.getElementById("modalOverlay").classList.remove("open");
+});
+
+// GCash screenshot upload
+document.getElementById("gcashUpload").addEventListener("change", function() {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        gcashData = e.target.result;
+        const prev = document.getElementById("gcashPreview");
+        prev.src = gcashData; prev.style.display = "block";
+    };
+    reader.readAsDataURL(file);
+});
+
+// ── CONFIRM ACTION ────────────────────────────────────────────────────────────
+document.getElementById("modalActionBtn").addEventListener("click", async () => {
+    const size  = getSelectedSize();
+    const price = getPrice();
+
+    if (currentMode === "buy") {
+        // Buy Now — pass to payment.html via localStorage (page nav state)
+        localStorage.setItem("buynow_" + currentCustomer, JSON.stringify({
+            name: currentProduct.name, price, image: currentProduct.image,
+            seller: currentProduct.seller || sellerUsername, size, qty: quantity
+        }));
+        localStorage.removeItem("checkoutItems_" + currentCustomer);
+        document.getElementById("modalOverlay").classList.remove("open");
+        window.location.href = "payment.html";
+
+    } else if (currentMode === "cart") {
+        // Add to Cart → save to Firestore
+        showLoading("Adding to cart...");
+        try {
+            let cart = await getCart(currentUID) || [];
+            const existing = cart.find(i => i.name === currentProduct.name && i.size === size);
+            if (existing) { existing.qty += quantity; }
+            else {
+                cart.push({
+                    name: currentProduct.name, price, image: currentProduct.image,
+                    seller: currentProduct.seller || sellerUsername, size, qty: quantity
+                });
+            }
+            await saveCart(currentUID, cart);
+            hideLoading();
+            document.getElementById("modalOverlay").classList.remove("open");
+            showToast("✓ Added to cart!");
+            await updateCartBadge();
+        } catch(e) {
+            hideLoading();
+            alert("Failed to add to cart: " + e.message);
+        }
+
+    } else {
+        // Reservation → save to Firestore orders collection
+        const reserveDate = document.getElementById("reserveDate").value;
+        if (!reserveDate) { alert("Please pick a reservation date."); return; }
+        if (!gcashData)   { alert("Please upload your GCash payment screenshot."); return; }
+
+        showLoading("Saving reservation...");
+        try {
+            const addresses = await (await import("./db.js")).getAddresses(currentUID);
+            const addr = addresses.find(a => a.isDefault) || addresses[0] || null;
+            await placeOrder({
+                customerUID:      currentUID,
+                customerUsername: currentCustomer,
+                sellerUsername:   currentProduct.seller || sellerUsername,
+                name:             currentProduct.name,
+                image:            currentProduct.image,
+                size, qty: quantity, price,
+                paymentMethod:    "gcash",
+                gcashScreenshot:  gcashData,
+                reserveDate,
+                address:          addr,
+                type:             "reservation",
+                status:           "reserved"
+            });
+            hideLoading();
+            document.getElementById("modalOverlay").classList.remove("open");
+            showToast("✓ Reservation confirmed!");
+        } catch(e) {
+            hideLoading();
+            alert("Failed to save reservation: " + e.message);
+        }
+    }
+});
+</script>
+</body>
+</html>
